@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, Collection, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, AttachmentBuilder, REST, Routes, SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, Collection, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, AttachmentBuilder, REST, Routes, SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 require('dotenv').config();
 const { QuickDB } = require('quick.db');
 const db = new QuickDB();
@@ -341,22 +341,8 @@ setInterval(updateMarket, 300000); // 5 minutes
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
-    // Startup Reset Logic (Zero out all players)
-    try {
-        const allData = await db.all();
-        const prefixesToClear = [
-            'money_', 'daily_', 'inv_', 'invest_balance_', 'invest_last_collect_', 
-            'invest_total_profit_', 'lands_data_', 'lands_', 'lands_total_profit_', 
-            'last_collect_', 'stolen_', 'rob_cooldown_', 'highest_balance_', 'highest_loss_',
-            'is_vip_'
-        ];
-        for (const data of allData) {
-            if (prefixesToClear.some(p => data.id.startsWith(p))) {
-                await db.delete(data.id);
-            }
-        }
-        console.log('Startup Reset: All players zeroed out successfully.');
-    } catch (e) { console.error('Startup Reset Error:', e); }
+    // Startup Reset Logic (Removed to prevent data loss)
+    console.log('Startup: Bot is ready without resetting data.');
 
     const commands = [
         new SlashCommandBuilder()
@@ -403,8 +389,17 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
     // Guild & Channel Check from .env
-    if (process.env.GUILD_ID && message.guild.id !== process.env.GUILD_ID) return;
-    if (process.env.CHANNEL_ID && message.channel.id !== process.env.CHANNEL_ID) return;
+    if (process.env.GUILD_ID && message.guild.id !== process.env.GUILD_ID) {
+        console.log(`[DEBUG] Ignored message from guild ${message.guild.id} (Expected: ${process.env.GUILD_ID})`);
+        return;
+    }
+    if (process.env.CHANNEL_ID && message.channel.id !== process.env.CHANNEL_ID) {
+        // Only log if it looks like a command to avoid spamming logs with every chat message
+        if (message.content.startsWith(prefix) || !prefix) {
+            console.log(`[DEBUG] Ignored command from channel ${message.channel.id} (Expected: ${process.env.CHANNEL_ID})`);
+        }
+        return;
+    }
 
     let commandName;
     let args;
@@ -3386,7 +3381,10 @@ client.on('messageCreate', async (message) => {
 // Interaction Handling
 client.on('interactionCreate', async (interaction) => {
     // Guild Check
-    if (process.env.GUILD_ID && interaction.guild.id !== process.env.GUILD_ID) return;
+    if (process.env.GUILD_ID && interaction.guild.id !== process.env.GUILD_ID) {
+        console.log(`[DEBUG] Ignored interaction from guild ${interaction.guild.id}`);
+        return;
+    }
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'market_select') {
             const [action, itemId] = interaction.values[0].split('_');
