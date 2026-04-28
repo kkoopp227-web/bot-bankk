@@ -338,7 +338,7 @@ async function drawRobCard(message, targetUser, amount, win) {
 updateMarket();
 setInterval(updateMarket, 300000); // 5 minutes
 
-client.once('clientReady', async () => {
+client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
     // Startup Reset Logic (Zero out all players)
