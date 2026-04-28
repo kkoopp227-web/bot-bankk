@@ -2251,7 +2251,7 @@ client.on('messageCreate', async (message) => {
 
         // Draw Fruits Grid
         const startX = 140;
-        const startY = 160;
+        const startY = 210;
         const spacingX = 130;
         const spacingY = 140;
 
@@ -2351,8 +2351,19 @@ client.on('messageCreate', async (message) => {
             cctx.textAlign = 'center';
 
             if (state === 'playing') {
-                cctx.font = 'bold 30px "Segoe UI Emoji", Arial';
-                cctx.fillText(`أين توجد ${targetSequence[currentRound]} ؟`, 400, 100);
+                const targetEmoji = targetSequence[currentRound];
+                const emojiImg = fruitMap.get(targetEmoji);
+                
+                cctx.font = 'bold 30px Arial';
+                cctx.textAlign = 'center';
+                cctx.fillText('أين توجد          ؟', 400, 100);
+                
+                if (emojiImg) {
+                    cctx.drawImage(emojiImg, 385, 65, 45, 45);
+                } else {
+                    cctx.font = 'bold 30px Arial';
+                    cctx.fillText(targetEmoji, 400, 100);
+                }
             } else if (state === 'won') {
                 cctx.fillText('لقد فزت!', 400, 100);
             } else if (state === 'lost') {
