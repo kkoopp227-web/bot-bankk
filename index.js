@@ -295,6 +295,23 @@ setInterval(updateMarket, 300000); // 5 minutes
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
+    // Startup Reset Logic (Zero out all players)
+    try {
+        const allData = await db.all();
+        const prefixesToClear = [
+            'money_', 'daily_', 'inv_', 'invest_balance_', 'invest_last_collect_', 
+            'invest_total_profit_', 'lands_data_', 'lands_', 'lands_total_profit_', 
+            'last_collect_', 'stolen_', 'rob_cooldown_', 'highest_balance_', 'highest_loss_',
+            'is_vip_'
+        ];
+        for (const data of allData) {
+            if (prefixesToClear.some(p => data.id.startsWith(p))) {
+                await db.delete(data.id);
+            }
+        }
+        console.log('Startup Reset: All players zeroed out successfully.');
+    } catch (e) { console.error('Startup Reset Error:', e); }
+
     const commands = [
         new SlashCommandBuilder()
             .setName('add-money')
@@ -312,7 +329,11 @@ client.once('ready', async () => {
         new SlashCommandBuilder()
             .setName('set-channel')
             .setDescription('تحديد الشات المخصص للأوامر')
-            .addChannelOption(option => option.setName('channel').setDescription('الشات المخصص').setRequired(true))
+            .addChannelOption(option => option.setName('channel').setDescription('الشات المخصص').setRequired(true)),
+        new SlashCommandBuilder()
+            .setName('ازالة-تاج')
+            .setDescription('إزالة تاج كبار الشخصيات من مستخدم')
+            .addUserOption(option => option.setName('user').setDescription('المستخدم المراد إزالة التاج منه').setRequired(true))
     ];
 
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -1250,10 +1271,14 @@ client.on('messageCreate', async (message) => {
                 const avatar = await loadImage(user.displayAvatarURL({ extension: 'png', size: 64 }));
                 
                 const isVip = await db.get(`is_vip_${user.id}`);
-                if (isVip) {
-                    ctx.font = '24px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('👑', 50, y - 35);
+                // Gold Crown for #1 or VIP
+                if (i === 0 || isVip) {
+                    try {
+                        const crownImg = await loadImage(getEmojiUrl('👑'));
+                        ctx.drawImage(crownImg, 35, y - 55, 30, 30);
+                    } catch (e) {
+                        ctx.font = '24px Arial'; ctx.textAlign = 'center'; ctx.fillText('👑', 50, y - 35);
+                    }
                 }
 
                 ctx.save(); ctx.beginPath(); ctx.arc(50, y - 2, 22, 0, Math.PI * 2); ctx.clip();
@@ -3834,6 +3859,15 @@ client.on('interactionCreate', async (interaction) => {
             }
 
             return interaction.reply({ content: `✅ تم تصفير كافة البيانات بنجاح! \n👑 الشخص الأغنى قبل التصفير كان <@${richestId}> وقد حصل على رتبة **كبار الشخصيات** ومميزات خاصة!`, ephemeral: false });
+        }
+
+        if (commandName === 'ازالة-تاج') {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator) && !interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID)) {
+                return interaction.reply({ content: '❌ ليس لديك صلاحية لاستخدام هذا الأمر.', ephemeral: true });
+            }
+            const target = interaction.options.getUser('user');
+            await db.delete(`is_vip_${target.id}`);
+            return interaction.reply({ content: `✅ تم إزالة التاج من <@${target.id}> بنجاح!` });
         }
     }
 
