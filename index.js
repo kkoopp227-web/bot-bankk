@@ -7,6 +7,19 @@ const GIFEncoder = require('gif-encoder-2');
 const path = require('path');
 const fs = require('fs');
 
+// Register Emoji Font for Linux/Render compatibility
+try {
+    const fontPath = path.join(__dirname, 'fonts', 'NotoColorEmoji.ttf');
+    if (fs.existsSync(fontPath)) {
+        registerFont(fontPath, { family: 'NotoColorEmoji' });
+        console.log('Emoji font registered successfully.');
+    } else {
+        console.warn('Emoji font file not found at:', fontPath);
+    }
+} catch (e) {
+    console.error('Error registering emoji font:', e);
+}
+
 const express = require('express');
 const app = express();
 app.get('/', (req, res) => res.send('Bot is online! ✅'));
@@ -534,14 +547,14 @@ client.on('messageCreate', async (message) => {
         let moves = 0;
 
         const renderGrid = () => {
-            const canvas = createCanvas(400, 450);
+            const canvas = createCanvas(500, 550);
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, 400, 450);
+            ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, 500, 550);
             
             const cellSize = 36;
             const gap = 4;
-            const offsetX = 20;
-            const offsetY = 20;
+            const offsetX = 52;
+            const offsetY = 77;
 
             for (let y = 0; y < gridSize; y++) {
                 for (let x = 0; x < gridSize; x++) {
@@ -724,7 +737,7 @@ client.on('messageCreate', async (message) => {
             const isVip = await db.get(`is_vip_${user.id}`);
             if (isVip) {
                 ctx.fillStyle = '#f1c40f';
-                ctx.font = '50px Arial';
+                ctx.font = '70px "NotoColorEmoji", Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('👑', cardX + 180, cardY + 120);
             }
@@ -1426,7 +1439,7 @@ client.on('messageCreate', async (message) => {
         ctx.lineWidth = 4;
         ctx.stroke();
 
-        ctx.font = '70px Arial';
+        ctx.font = '70px "NotoColorEmoji", Arial';
         ctx.fillStyle = '#ffffff';
         ctx.fillText(slot1, 355, 195);
         ctx.fillText(slot2, 430, 195);
@@ -2180,7 +2193,7 @@ client.on('messageCreate', async (message) => {
         ctx.fillText('سيتم إخفاء الفواكه خلال 5 ثوانٍ ..', 400, 100);
 
         // Draw Fruits Grid
-        ctx.font = '70px "Segoe UI Emoji", Arial';
+        ctx.font = '70px "NotoColorEmoji", Arial';
         const startX = 140;
         const startY = 230;
         const spacingX = 130;
