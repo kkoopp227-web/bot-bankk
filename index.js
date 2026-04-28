@@ -2355,13 +2355,16 @@ client.on('messageCreate', async (message) => {
                 const emojiImg = fruitMap.get(targetEmoji);
                 
                 cctx.font = 'bold 30px Arial';
-                cctx.textAlign = 'center';
-                cctx.fillText('أين توجد          ؟', 400, 100);
+                cctx.textAlign = 'right';
+                cctx.fillText('أين توجد', 375, 100);
+                
+                cctx.textAlign = 'left';
+                cctx.fillText('؟', 425, 100);
                 
                 if (emojiImg) {
-                    cctx.drawImage(emojiImg, 385, 65, 45, 45);
+                    cctx.drawImage(emojiImg, 380, 62, 40, 40);
                 } else {
-                    cctx.font = 'bold 30px Arial';
+                    cctx.textAlign = 'center';
                     cctx.fillText(targetEmoji, 400, 100);
                 }
             } else if (state === 'won') {
