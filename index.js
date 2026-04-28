@@ -1612,112 +1612,90 @@ client.on('messageCreate', async (message) => {
             await db.sub(`money_${message.author.id}`, lossAmount);
         }
 
-        // Draw Canvas Chart as GIF
+        // Draw Static Canvas Chart
         const width = 800;
-        const height = 400;
-        const encoder = new GIFEncoder(width, height);
-        
-        const bgCanvas = createCanvas(width, height);
-        const bgCtx = bgCanvas.getContext('2d');
-
-        // Render Background Once
-        const grad = bgCtx.createLinearGradient(0, 0, 0, height);
-        grad.addColorStop(0, '#2a2a2a');
-        grad.addColorStop(1, '#1a1a1a');
-        bgCtx.fillStyle = grad;
-        bgCtx.beginPath();
-        bgCtx.roundRect(0, 0, width, height, 15);
-        bgCtx.fill();
-
-        const chartX = 0;
-        const chartY = 40;
-        const chartW = width - 80;
-        const chartH = height - 80;
-
-        bgCtx.textAlign = 'right';
-        bgCtx.textBaseline = 'middle';
-        bgCtx.font = 'bold 16px Arial';
-        bgCtx.lineWidth = 2;
-        
-        const levels = [100, 75, 50, 25, 0, -25, -50, -75, -100];
-        
-        for (let level of levels) {
-            const mappedY = chartY + chartH - ((level + 100) / 200) * chartH;
-            
-            bgCtx.strokeStyle = '#444444';
-            bgCtx.setLineDash([8, 8]);
-            bgCtx.beginPath();
-            bgCtx.moveTo(chartX, mappedY);
-            bgCtx.lineTo(chartX + chartW, mappedY);
-            bgCtx.stroke();
-
-            bgCtx.fillStyle = '#cccccc';
-            bgCtx.fillText(`${level}%`, width - 15, mappedY);
-        }
-
-        // Generate GIF Frames
-        encoder.start();
-        encoder.setRepeat(0); // 0 for repeat, -1 for no-repeat
-        encoder.setDelay(30); // 30ms per frame
-        
+        const height = 500;
         const canvas = createCanvas(width, height);
         const ctx = canvas.getContext('2d');
+
+        // Background
+        const grad = ctx.createLinearGradient(0, 0, 0, height);
+        grad.addColorStop(0, '#2a2a2a');
+        grad.addColorStop(1, '#1a1a1a');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.roundRect(0, 0, width, height, 30); ctx.fill();
+
+        // Chart Area
+        const chartX = 40;
+        const chartY = 140;
+        const chartW = 720;
+        const chartH = 300;
+
+        // Grid Lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        const levels = [100, 50, 0, -50, -100];
+        for (let level of levels) {
+            const mappedY = chartY + chartH - ((level + 100) / 200) * chartH;
+            ctx.beginPath(); ctx.moveTo(chartX, mappedY); ctx.lineTo(chartX + chartW, mappedY); ctx.stroke();
+            ctx.fillStyle = '#666666'; ctx.font = '12px Arial'; ctx.textAlign = 'right';
+            ctx.fillText(`${level}%`, chartX - 5, mappedY + 5);
+        }
+
+        // Draw Chart Line
         const stepX = chartW / (points - 1);
-
-        for (let frame = 1; frame <= points; frame++) {
-            ctx.drawImage(bgCanvas, 0, 0); // draw pre-rendered bg
-
-            ctx.setLineDash([]);
-            ctx.strokeStyle = '#aaaaaa';
-            ctx.lineWidth = 4;
-            ctx.lineJoin = 'round';
-            
-            ctx.beginPath();
-            for (let i = 0; i < frame; i++) {
-                const val = walk[i];
-                const mappedY = chartY + chartH - ((val + 100) / 200) * chartH;
-                const x = chartX + (i * stepX);
-                
-                if (i === 0) ctx.moveTo(x, mappedY);
-                else ctx.lineTo(x, mappedY);
-            }
-            ctx.stroke();
-
-            if (frame > 1) {
-                // Fill under the line
-                const lastX = chartX + ((frame - 1) * stepX);
-                ctx.lineTo(lastX, height);
-                ctx.lineTo(chartX, height);
-                ctx.closePath();
-                const fillGrad = ctx.createLinearGradient(0, chartY, 0, chartY + chartH);
-                fillGrad.addColorStop(0, 'rgba(170, 170, 170, 0.2)');
-                fillGrad.addColorStop(1, 'rgba(170, 170, 170, 0.0)');
-                ctx.fillStyle = fillGrad;
-                ctx.fill();
-            }
-
-            if (frame === points) {
-                encoder.setDelay(5000); // 5 seconds pause at the end
-            }
-
-            encoder.addFrame(ctx);
+        ctx.strokeStyle = finalPercentage >= 0 ? '#2ecc71' : '#e74c3c';
+        ctx.lineWidth = 4;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        for (let i = 0; i < points; i++) {
+            const x = chartX + (i * stepX);
+            const y = chartY + chartH - ((walk[i] + 100) / 200) * chartH;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
         }
+        ctx.stroke();
 
-        encoder.finish();
+        // Fill under the line (Gradient)
+        const fillGrad = ctx.createLinearGradient(0, chartY, 0, chartY + chartH);
+        fillGrad.addColorStop(0, finalPercentage >= 0 ? 'rgba(46, 204, 113, 0.2)' : 'rgba(231, 76, 60, 0.2)');
+        fillGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = fillGrad;
+        ctx.lineTo(chartX + chartW, chartY + chartH);
+        ctx.lineTo(chartX, chartY + chartH);
+        ctx.closePath(); ctx.fill();
 
-        // Format message
-        let contentStr = `<@${message.author.id}>\n`;
-        if (finalPercentage > 0) {
-            contentStr += `**+$${winAmount.toLocaleString('en-US')}.00 (${finalPercentage}%)**`;
-        } else if (finalPercentage < 0) {
-            const lossAmount = Math.floor(amount * (Math.abs(finalPercentage) / 100));
-            contentStr += `**-$${lossAmount.toLocaleString('en-US')}.00 (${finalPercentage}%)**`;
-        } else {
-            contentStr += `**$0.00 (0%)**`;
-        }
+        // Header Section (User Info)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath(); ctx.roundRect(20, 20, 760, 100, 20); ctx.fill();
 
-        const attachment = new AttachmentBuilder(encoder.out.getData(), { name: 'trade.gif' });
-        return message.reply({ content: contentStr, files: [attachment] });
+        try {
+            const avatar = await loadImage(message.author.displayAvatarURL({ extension: 'png', size: 128 }));
+            ctx.save(); ctx.beginPath(); ctx.arc(70, 70, 40, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(avatar, 30, 30, 80, 80); ctx.restore();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(70, 70, 40, 0, Math.PI * 2); ctx.stroke();
+        } catch (e) {}
+
+        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left'; ctx.font = 'bold 24px Arial';
+        ctx.fillText(message.author.username, 130, 55);
+        ctx.font = '20px Arial'; ctx.fillStyle = '#aaaaaa';
+        ctx.fillText(`مبلغ التداول: $${formatNumber(amount)}`, 130, 85);
+
+        // Result Badge
+        const resultText = finalPercentage >= 0 ? `ربح +${finalPercentage}%` : `خسارة ${finalPercentage}%`;
+        const badgeColor = finalPercentage >= 0 ? '#2ecc71' : '#e74c3c';
+        
+        ctx.fillStyle = badgeColor;
+        ctx.beginPath(); ctx.roundRect(550, 40, 210, 60, 15); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.font = 'bold 22px Arial';
+        ctx.fillText(resultText, 655, 78);
+
+        const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'trade.png' });
+        const summary = finalPercentage >= 0 ? 
+            `🟢 <@${message.author.id}> ربحت **$${formatNumber(winAmount)}** من التداول!` :
+            `🔴 <@${message.author.id}> خسرت **$${formatNumber(Math.floor(amount * (Math.abs(finalPercentage) / 100)))}** في التداول.`;
+
+        return message.reply({ content: summary, files: [attachment] });
     }
 
     // Plunder Command (نهب)
