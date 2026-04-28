@@ -1,0 +1,17 @@
+{
+  "name": "bank-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "canvas": "^3.2.3",
+    "discord.js": "^14.26.3",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.1",
+    "gif-encoder-2": "^1.0.5",
+    "quick.db": "^9.1.7"
+  }
+}
