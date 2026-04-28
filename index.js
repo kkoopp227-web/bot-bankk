@@ -80,6 +80,16 @@ function formatNumber(num) {
     return num.toString();
 }
 
+function getEmojiUrl(emoji) {
+    if (!emoji) return null;
+    // Convert to hex code points and filter out variation selectors like fe0f
+    const codePoints = [...emoji]
+        .map(c => c.codePointAt(0).toString(16))
+        .filter(hex => hex !== 'fe0f');
+    const hex = codePoints.join('-');
+    return `https://abs.twimg.com/emoji/v2/72x72/${hex}.png`;
+}
+
 async function drawRewardCard(message, amount, totalBalance) {
     const canvas = createCanvas(800, 400);
     const ctx = canvas.getContext('2d');
@@ -1439,11 +1449,21 @@ client.on('messageCreate', async (message) => {
         ctx.lineWidth = 4;
         ctx.stroke();
 
-        ctx.font = '70px "NotoColorEmoji", Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(slot1, 355, 195);
-        ctx.fillText(slot2, 430, 195);
-        ctx.fillText(slot3, 505, 195);
+        // Draw Fruit Images
+        try {
+            const [img1, img2, img3] = await Promise.all([
+                loadImage(getEmojiUrl(slot1)),
+                loadImage(getEmojiUrl(slot2)),
+                loadImage(getEmojiUrl(slot3))
+            ]);
+            ctx.drawImage(img1, 315, 137, 75, 75);
+            ctx.drawImage(img2, 385, 137, 75, 75);
+            ctx.drawImage(img3, 455, 137, 75, 75);
+        } catch (e) {
+            console.error('Error drawing gamble emojis:', e);
+            ctx.font = '70px Arial'; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+            ctx.fillText(slot1, 350, 195); ctx.fillText(slot2, 425, 195); ctx.fillText(slot3, 500, 195);
+        }
 
         const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'gamble.png' });
         return message.reply({ files: [attachment] });
@@ -2036,6 +2056,14 @@ client.on('messageCreate', async (message) => {
         const winnerIndex = 25; // Stop at this index
         const winner = spinnerItems[winnerIndex];
 
+        // Pre-load all reward emojis
+        const emojiMap = new Map();
+        const uniqueEmojis = [...new Set(rewards.map(r => r.emoji))];
+        try {
+            const loaded = await Promise.all(uniqueEmojis.map(e => loadImage(getEmojiUrl(e))));
+            uniqueEmojis.forEach((e, i) => emojiMap.set(e, loaded[i]));
+        } catch (e) { console.error('Error loading luck emojis:', e); }
+
         const width = 600;
         const height = 300;
         const canvas = createCanvas(width, height);
@@ -2043,12 +2071,11 @@ client.on('messageCreate', async (message) => {
         const encoder = new GIFEncoder(width, height);
 
         encoder.start();
-        encoder.setRepeat(0);  // 0 for endless loop
-        encoder.setDelay(50);   // frame delay in ms
+        encoder.setRepeat(0);  
+        encoder.setDelay(50);   
         encoder.setQuality(10); 
 
-        // Animation frames
-        const totalFrames = 35; // Increased frames for smoother stop
+        const totalFrames = 35; 
         let shift = 0;
 
         let userAvatar;
@@ -2101,14 +2128,19 @@ client.on('messageCreate', async (message) => {
                     else if (item.id === 'brick') color = '#e74c3c';
                     else if (item.id === 'stone') color = '#95a5a6';
 
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '35px "Segoe UI Emoji", Arial'; ctx.textAlign = 'center';
-                    ctx.fillText(item.emoji, x + 30, 150);
+                    const emojiImg = emojiMap.get(item.emoji);
+                    if (emojiImg) {
+                        ctx.drawImage(emojiImg, x + 10, 120, 40, 40);
+                    } else {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '35px Arial'; ctx.textAlign = 'center';
+                        ctx.fillText(item.emoji, x + 30, 150);
+                    }
                     
                     ctx.fillStyle = color;
+                    ctx.textAlign = 'center';
                     ctx.font = 'bold 12px Arial';
                     if (item.type === 'money') {
-                        ctx.fillText('💵', x + 30, 150);
                         ctx.fillText(`${formatNumber(item.value).replace('.0', '')}`, x + 30, 190);
                     } else {
                         ctx.fillText(`x${item.value}`, x + 30, 190);
@@ -2193,18 +2225,31 @@ client.on('messageCreate', async (message) => {
         ctx.fillText('سيتم إخفاء الفواكه خلال 5 ثوانٍ ..', 400, 100);
 
         // Draw Fruits Grid
-        ctx.font = '70px "NotoColorEmoji", Arial';
         const startX = 140;
-        const startY = 230;
+        const startY = 160;
         const spacingX = 130;
         const spacingY = 140;
+
+        // Pre-load fruit images
+        const fruitMap = new Map();
+        const uniqueFruits = [...new Set(shuffledFruits)];
+        try {
+            const loaded = await Promise.all(uniqueFruits.map(f => loadImage(getEmojiUrl(f))));
+            uniqueFruits.forEach((f, i) => fruitMap.set(f, loaded[i]));
+        } catch (e) { console.error('Error loading fruit images:', e); }
 
         for (let i = 0; i < 10; i++) {
             const row = Math.floor(i / 5);
             const col = i % 5;
-            const x = startX + (col * spacingX);
+            const x = startX + (col * spacingX) - 35;
             const y = startY + (row * spacingY);
-            ctx.fillText(shuffledFruits[i], x, y);
+            const emojiImg = fruitMap.get(shuffledFruits[i]);
+            if (emojiImg) {
+                ctx.drawImage(emojiImg, x, y, 75, 75);
+            } else {
+                ctx.font = '70px Arial'; ctx.fillStyle = '#ffffff';
+                ctx.fillText(shuffledFruits[i], x + 35, y + 70);
+            }
         }
 
         const buffer1 = canvas.toBuffer();
