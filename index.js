@@ -3123,6 +3123,13 @@ client.on('messageCreate', async (message) => {
             console.log('Error loading server icon:', e);
         }
 
+        // Pre-load market icons
+        const marketImgMap = new Map();
+        try {
+            const loaded = await Promise.all(items.map(i => loadImage(getEmojiUrl(i.emoji))));
+            items.forEach((item, i) => marketImgMap.set(item.id, loaded[i]));
+        } catch (e) { console.error('Error loading market icons:', e); }
+
         // Draw Items
         let xPos = 30, yPos = 80;
         for (let i = 0; i < items.length; i++) {
@@ -3144,11 +3151,16 @@ client.on('messageCreate', async (message) => {
             ctx.roundRect(xPos + 10, yPos + 10, 80, 80, 10);
             ctx.fill();
 
-            // Item Emoji
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '40px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(item.emoji, xPos + 50, yPos + 65);
+            // Item Emoji Image
+            const emojiImg = marketImgMap.get(item.id);
+            if (emojiImg) {
+                ctx.drawImage(emojiImg, xPos + 20, yPos + 20, 60, 60);
+            } else {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(item.emoji, xPos + 50, yPos + 65);
+            }
 
             // Item Name (Below Square)
             let color = '#ffffff';
@@ -3256,8 +3268,15 @@ client.on('messageCreate', async (message) => {
         for (let i = 0; i < items.length; i++) {
             const count = await db.get(`inv_${user.id}_${items[i].id}`) || 0;
             const xOffset = i % 2 === 0 ? 0 : 100;
+            
+            const emojiImg = marketImgMap.get(items[i].id);
+            if (emojiImg) {
+                ctx.drawImage(emojiImg, 550 + xOffset, invY - 20, 25, 25);
+            } else {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`${items[i].emoji}`, 555 + xOffset, invY);
+            }
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(`${items[i].emoji}`, 555 + xOffset, invY);
             ctx.font = 'bold 14px Arial';
             ctx.fillText(`x${count}`, 585 + xOffset, invY);
             ctx.font = '16px Arial';
@@ -3330,11 +3349,11 @@ client.on('messageCreate', async (message) => {
             quantity = parseInt(quantityInput);
         }
 
-        if (isNaN(quantity) || quantity < 500) {
+        if (isNaN(quantity) || quantity < 1) {
             if (!quantityInput || quantityInput === 'كامل' || quantityInput === 'كل') {
-                return message.reply(`❌ رصيدك لا يكفي لشراء الحد الأدنى (500) من **${item.name}**.\nتحتاج على الأقل **${formatNumber(price.buy * 500)}** ريال.`);
+                return message.reply(`❌ رصيدك لا يكفي لشراء أي كمية من **${item.name}**.`);
             }
-            return message.reply('❌ أقل كمية يمكنك شراؤها هي **500**.');
+            return message.reply('❌ أقل كمية يمكنك شراؤها هي **1**.');
         }
 
         const totalCost = price.buy * quantity;
@@ -3370,11 +3389,11 @@ client.on('messageCreate', async (message) => {
             quantity = parseInt(quantityInput);
         }
 
-        if (isNaN(quantity) || quantity < 500) {
+        if (isNaN(quantity) || quantity < 1) {
             if (!quantityInput || quantityInput === 'كامل' || quantityInput === 'كل') {
-                return message.reply(`❌ لا تملك الحد الأدنى (500) من **${item.name}** للبيع. لديك **${userInv}** فقط.`);
+                return message.reply(`❌ لا تملك أي كمية من **${item.name}** للبيع.`);
             }
-            return message.reply('❌ أقل كمية يمكنك بيعها هي **500**.');
+            return message.reply('❌ أقل كمية يمكنك بيعها هي **1**.');
         }
 
         const price = marketPrices[item.id];
