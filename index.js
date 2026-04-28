@@ -289,6 +289,52 @@ async function drawTransferCard(message, targetUser, amount) {
     return canvas.toBuffer();
 }
 
+async function drawRobCard(message, targetUser, amount, win) {
+    const canvas = createCanvas(800, 400);
+    const ctx = canvas.getContext('2d');
+    const sender = message.author;
+    
+    // Background (Dark)
+    const grad = ctx.createLinearGradient(0, 0, 800, 400);
+    grad.addColorStop(0, win ? '#1b5e20' : '#b71c1c');
+    grad.addColorStop(1, '#000000');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.roundRect(0, 0, 800, 400, 40); ctx.fill();
+
+    // Avatars
+    const drawAvatar = async (u, x, y) => {
+        try {
+            const av = await loadImage(u.displayAvatarURL({ extension: 'png', size: 128 }));
+            ctx.save();
+            ctx.beginPath(); ctx.arc(x, y, 70, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(av, x - 70, y - 70, 140, 140);
+            ctx.restore();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(x, y, 70, 0, Math.PI * 2); ctx.stroke();
+        } catch (e) {}
+    };
+    await drawAvatar(sender, 200, 200);
+    await drawAvatar(targetUser, 600, 200);
+
+    // Center Icon
+    try {
+        const emojiImg = await loadImage(getEmojiUrl(win ? '🥷' : '👮'));
+        ctx.drawImage(emojiImg, 350, 150, 100, 100);
+    } catch (e) {}
+
+    // Text
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 35px Arial';
+    ctx.fillText(win ? 'عملية سرقة ناجحة!' : 'تم القبض عليك!', 400, 80);
+    
+    ctx.font = 'bold 45px Arial';
+    ctx.fillStyle = win ? '#2ecc71' : '#e74c3c';
+    ctx.fillText(win ? `+$${formatNumber(amount)}` : `-$${formatNumber(amount)}`, 400, 330);
+
+    return canvas.toBuffer();
+}
+
 updateMarket();
 setInterval(updateMarket, 300000); // 5 minutes
 
@@ -1271,8 +1317,8 @@ client.on('messageCreate', async (message) => {
                 const avatar = await loadImage(user.displayAvatarURL({ extension: 'png', size: 64 }));
                 
                 const isVip = await db.get(`is_vip_${user.id}`);
-                // Gold Crown for #1 or VIP
-                if (i === 0 || isVip) {
+                // Gold Crown ONLY for VIP
+                if (isVip) {
                     try {
                         const crownImg = await loadImage(getEmojiUrl('👑'));
                         ctx.drawImage(crownImg, 35, y - 55, 30, 30);
@@ -1708,12 +1754,11 @@ client.on('messageCreate', async (message) => {
             await db.add(`stolen_${message.author.id}`, stealAmount);
             await db.set(`rob_cooldown_${message.author.id}`, Date.now());
 
-            const totalBalance = await db.get(`money_${message.author.id}`) || 0;
-            const buffer = await drawRewardCard(message, stealAmount, totalBalance);
-            const attachment = new AttachmentBuilder(buffer, { name: 'plunder.png' });
+            const buffer = await drawRobCard(message, user, stealAmount, true);
+            const attachment = new AttachmentBuilder(buffer, { name: 'rob_success.png' });
 
             return message.reply({ 
-                content: `<@${message.author.id}>\n**+$${formatNumber(stealAmount)} (نجحت السرقة)**`,
+                content: `<@${message.author.id}> نجحت في نهب <@${user.id}>!`,
                 files: [attachment] 
             });
         } else {
@@ -1722,7 +1767,14 @@ client.on('messageCreate', async (message) => {
             const toFine = Math.min(currentMoney, fine);
             await db.sub(`money_${message.author.id}`, toFine);
             await db.set(`rob_cooldown_${message.author.id}`, Date.now());
-            return message.reply(`👮 حظك سيء! مسكتك الشرطة وغرمتك **${formatNumber(toFine)}** ريال.`);
+
+            const buffer = await drawRobCard(message, user, toFine, false);
+            const attachment = new AttachmentBuilder(buffer, { name: 'rob_fail.png' });
+
+            return message.reply({ 
+                content: `<@${message.author.id}> حظك سيء! مسكتك الشرطة وغرمتك!`,
+                files: [attachment]
+            });
         }
     }
 
