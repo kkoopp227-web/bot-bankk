@@ -2093,8 +2093,6 @@ client.on('messageCreate', async (message) => {
         }
         await db.set(`luck_cooldown_${message.author.id}`, Date.now());
         
-        const loadingMsg = await message.reply('جاري انشاء العجله...');
-
         const rewards = [
             { type: 'money', value: 10000, label: '10K', emoji: '💵' },
             { type: 'money', value: 20000, label: '20K', emoji: '💵' },
@@ -2108,144 +2106,67 @@ client.on('messageCreate', async (message) => {
             { type: 'item', id: 'stone', value: 120, label: 'حجر', emoji: '🪨' }
         ];
 
-        // Generate a random sequence for the spinner (no consecutive duplicates)
-        const spinnerItems = [];
-        const shuffledRewards = [...rewards].sort(() => Math.random() - 0.5);
-        for (let i = 0; i < 3; i++) {
-            spinnerItems.push(...shuffledRewards);
-        }
-        
-        const winnerIndex = 25; // Stop at this index
-        const winner = spinnerItems[winnerIndex];
-
-        // Pre-load all reward emojis
-        const emojiMap = new Map();
-        const uniqueEmojis = [...new Set(rewards.map(r => r.emoji))];
-        try {
-            const loaded = await Promise.all(uniqueEmojis.map(e => loadImage(getEmojiUrl(e))));
-            uniqueEmojis.forEach((e, i) => emojiMap.set(e, loaded[i]));
-        } catch (e) { console.error('Error loading luck emojis:', e); }
+        const winner = rewards[Math.floor(Math.random() * rewards.length)];
 
         const width = 600;
-        const height = 300;
+        const height = 350;
         const canvas = createCanvas(width, height);
         const ctx = canvas.getContext('2d');
-        const encoder = new GIFEncoder(width, height);
 
-        encoder.start();
-        encoder.setRepeat(0);  
-        encoder.setDelay(50);   
-        encoder.setQuality(10); 
+        // Background
+        ctx.fillStyle = '#1e1e1e';
+        ctx.beginPath(); ctx.roundRect(0, 0, width, height, 30); ctx.fill();
 
-        const totalFrames = 35; 
-        let shift = 0;
+        // Header
+        ctx.fillStyle = '#333333';
+        ctx.beginPath(); ctx.roundRect(0, 0, width, 80, 30); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 30px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('🎁 نتيجة الحظ', 300, 50);
 
-        let userAvatar;
+        // Winner Box
+        ctx.fillStyle = '#2c2c2c';
+        ctx.beginPath(); ctx.roundRect(150, 100, 300, 180, 20); ctx.fill();
+        ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.stroke();
+
+        // Emoji
         try {
-            userAvatar = await loadImage(message.author.displayAvatarURL({ extension: 'png', size: 64 }));
-        } catch (e) {}
-
-        for (let f = 0; f < totalFrames; f++) {
-            // Slow down the animation at the end
-            if (f > 25) encoder.setDelay(50 + (f - 25) * 50); 
-            if (f === totalFrames - 1) encoder.setDelay(5000); // Hold last frame for 5 seconds
-
-            // Background
-            ctx.fillStyle = '#2c2c2c';
-            ctx.fillRect(0, 0, width, height);
-
-            // Spinner Bar Background
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(0, 100, width, 120);
-
-            // Calculate shift: winner index (25) should be at center (300px)
-            // Item center = x + 30. We want x + 30 = 300 => x = 270.
-            // Items start at 10. Each item is 65px wide.
-            // Target offset for item 25 = 25 * 65.
-            // In the final frame (f=totalFrames-1), we want x = 270 for i=25.
-            // So 10 + (25 * 65) - totalShift = 270 => totalShift = 10 + 1625 - 270 = 1365.
-            
-            let currentShift;
-            if (f < 25) {
-                currentShift = f * 50; // Constant speed
-            } else {
-                // Smooth deceleration to 1365
-                const progress = (f - 25) / (totalFrames - 25 - 1);
-                currentShift = 1250 + (1365 - 1250) * progress; 
-            }
-
-            // Draw Items with shift
-            let x = 10 + (0 * 65) - currentShift; 
-            for (let i = 0; i < spinnerItems.length; i++) {
-                const item = spinnerItems[i];
-                if (x + 60 > 0 && x < width) {
-                    ctx.fillStyle = '#3a3a3a';
-                    ctx.beginPath(); ctx.roundRect(x, 110, 60, 60, 10); ctx.fill();
-                    let color = '#ffffff';
-                    if (item.type === 'money') color = '#2ecc71';
-                    else if (item.id === 'gold') color = '#FFD700';
-                    else if (item.id === 'steel') color = '#b0c4de';
-                    else if (item.id === 'wood') color = '#cd853f';
-                    else if (item.id === 'iron') color = '#bdc3c7';
-                    else if (item.id === 'brick') color = '#e74c3c';
-                    else if (item.id === 'stone') color = '#95a5a6';
-
-                    const emojiImg = emojiMap.get(item.emoji);
-                    if (emojiImg) {
-                        ctx.drawImage(emojiImg, x + 10, 120, 40, 40);
-                    } else {
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = '35px Arial'; ctx.textAlign = 'center';
-                        ctx.fillText(item.emoji, x + 30, 150);
-                    }
-                    
-                    ctx.fillStyle = color;
-                    ctx.textAlign = 'center';
-                    ctx.font = 'bold 12px Arial';
-                    if (item.type === 'money') {
-                        ctx.fillText(`${formatNumber(item.value).replace('.0', '')}`, x + 30, 190);
-                    } else {
-                        ctx.fillText(`x${item.value}`, x + 30, 190);
-                        ctx.font = '10px Arial'; ctx.fillText(item.label, x + 30, 205);
-                    }
-                }
-                x += 65;
-            }
-
-            // Indicator Arrow
-            ctx.fillStyle = '#ffcc00';
-            ctx.beginPath(); ctx.moveTo(290, 80); ctx.lineTo(310, 80); ctx.lineTo(300, 100); ctx.closePath(); ctx.fill();
-
-            // User Branding
-            if (userAvatar) {
-                ctx.save(); ctx.beginPath(); ctx.arc(280, 260, 15, 0, Math.PI * 2); ctx.clip();
-                ctx.drawImage(userAvatar, 265, 245, 30, 30); ctx.restore();
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textAlign = 'left';
-                ctx.fillText(message.author.username, 300, 265);
-            } else {
-                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px Arial'; ctx.textAlign = 'center';
-                ctx.fillText(message.author.username, 300, 265);
-            }
-
-            encoder.addFrame(ctx);
+            const emojiImg = await loadImage(getEmojiUrl(winner.emoji));
+            ctx.drawImage(emojiImg, 250, 120, 100, 100);
+        } catch (e) {
+            ctx.font = '80px Arial';
+            ctx.fillText(winner.emoji, 300, 200);
         }
 
-        encoder.finish();
+        // Reward Text
+        let color = '#ffffff';
+        if (winner.type === 'money') color = '#2ecc71';
+        else if (winner.id === 'gold') color = '#FFD700';
 
-        const buffer = encoder.out.getData();
+        ctx.fillStyle = color;
+        ctx.font = 'bold 28px Arial';
+        if (winner.type === 'money') {
+            ctx.fillText(`${formatNumber(winner.value)} ريال`, 300, 250);
+        } else {
+            ctx.fillText(`${winner.value} حبة ${winner.label}`, 300, 250);
+        }
+
+        // User Branding
+        ctx.fillStyle = '#888888';
+        ctx.font = '18px Arial';
+        ctx.fillText(`مبروك لـ ${message.author.username}`, 300, 320);
 
         // Grant Reward
         let rewardMsg = '';
         if (winner.type === 'money') {
             await db.add(`money_${message.author.id}`, winner.value);
-            rewardMsg = `💵 حصلت على **${formatNumber(winner.value)}** ريال.`;
+            rewardMsg = `💵 حصلت على **${formatNumber(winner.value)}** ريال من عجلة الحظ!`;
         } else {
             await db.add(`inv_${message.author.id}_${winner.id}`, winner.value);
-            rewardMsg = `🎁 حصلت على **${winner.value}** حبة من **${winner.label}**.`;
+            rewardMsg = `🎁 حصلت على **${winner.value}** حبة من **${winner.label}** من عجلة الحظ!`;
         }
 
-        const attachment = new AttachmentBuilder(buffer, { name: 'luck.gif' });
-        return loadingMsg.edit({ content: rewardMsg, files: [attachment] });
+        const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'luck.png' });
+        return message.reply({ content: rewardMsg, files: [attachment] });
     }
 
     // Fruits Game Command (فواكه)
