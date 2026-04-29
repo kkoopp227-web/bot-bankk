@@ -32,11 +32,16 @@ class MongoQuickDB {
 
     async set(key, value) {
         await this._connect();
-        return await Data.findOneAndUpdate(
-            { key },
-            { value },
-            { upsert: true, new: true }
-        );
+        try {
+            return await Data.findOneAndUpdate(
+                { key },
+                { value },
+                { upsert: true, returnDocument: 'after' }
+            );
+        } catch (err) {
+            console.error('Database Error:', err);
+            throw err;
+        }
     }
 
     async add(key, amount) {
