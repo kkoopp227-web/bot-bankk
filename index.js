@@ -3840,6 +3840,25 @@ client.on('interactionCreate', async (interaction) => {
             const user = options.getUser('user');
             const amount = options.getInteger('amount');
             await db.add(`money_${user.id}`, amount);
+
+            const logChannelId = process.env.LOG_CHANNEL_ID;
+            if (logChannelId) {
+                const logChannel = interaction.guild.channels.cache.get(logChannelId);
+                if (logChannel) {
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle('📝 سجل إضافة أموال (Admin)')
+                        .setColor('#2ecc71')
+                        .addFields(
+                            { name: 'المسؤول:', value: `<@${interaction.user.id}>`, inline: true },
+                            { name: 'المستلم:', value: `<@${user.id}>`, inline: true },
+                            { name: 'المبلغ:', value: `**${formatNumber(amount)}** ريال`, inline: true }
+                        )
+                        .setTimestamp()
+                        .setFooter({ text: `ID: ${interaction.user.id}` });
+                    logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+                }
+            }
+
             return interaction.reply({ content: `✅ تم إضافة **${formatNumber(amount)}** ريال إلى رصيد **${user.username}**.`, ephemeral: true });
         }
 
@@ -3849,6 +3868,25 @@ client.on('interactionCreate', async (interaction) => {
             const current = await db.get(`money_${user.id}`) || 0;
             const toRemove = Math.min(current, amount);
             await db.sub(`money_${user.id}`, toRemove);
+
+            const logChannelId = process.env.LOG_CHANNEL_ID;
+            if (logChannelId) {
+                const logChannel = interaction.guild.channels.cache.get(logChannelId);
+                if (logChannel) {
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle('📝 سجل سحب أموال (Admin)')
+                        .setColor('#e74c3c')
+                        .addFields(
+                            { name: 'المسؤول:', value: `<@${interaction.user.id}>`, inline: true },
+                            { name: 'من:', value: `<@${user.id}>`, inline: true },
+                            { name: 'المبلغ المسحوب:', value: `**${formatNumber(toRemove)}** ريال`, inline: true }
+                        )
+                        .setTimestamp()
+                        .setFooter({ text: `ID: ${interaction.user.id}` });
+                    logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+                }
+            }
+
             return interaction.reply({ content: `✅ تم سحب **${formatNumber(toRemove)}** ريال من رصيد **${user.username}**.`, ephemeral: true });
         }
 
