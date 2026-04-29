@@ -1,4 +1,4 @@
-const { QuickDB } = require('quick.db');
+ const { QuickDB } = require('quick.db');
 const mongoose = require('mongoose');
 require('dotenv').config();
 

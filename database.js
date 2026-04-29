@@ -15,13 +15,25 @@ class MongoQuickDB {
 
     async _connect() {
         if (this.connected) return;
-        try {
-            await mongoose.connect(process.env.MONGO_URI);
-            this.connected = true;
-            console.log('Connected to MongoDB successfully! ✅');
-        } catch (err) {
-            console.error('Failed to connect to MongoDB:', err);
-        }
+        if (this.connecting) return this.connecting;
+
+        this.connecting = (async () => {
+            try {
+                console.log('Attempting to connect to MongoDB...');
+                await mongoose.connect(process.env.MONGO_URI, {
+                    serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+                });
+                this.connected = true;
+                console.log('Connected to MongoDB successfully! ✅');
+            } catch (err) {
+                console.error('Failed to connect to MongoDB:', err.message);
+                this.connected = false;
+            } finally {
+                this.connecting = null;
+            }
+        })();
+
+        return this.connecting;
     }
 
     async get(key) {

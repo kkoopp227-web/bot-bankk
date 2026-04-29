@@ -1,5 +1,14 @@
 const { Client, GatewayIntentBits, EmbedBuilder, Collection, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, AttachmentBuilder, REST, Routes, SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 require('dotenv').config();
+
+// Global Error Handlers
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
 const { QuickDB } = require('./database.js');
 const db = new QuickDB();
 const { createCanvas, loadImage, registerFont } = require('canvas');
@@ -23,7 +32,26 @@ try {
 const express = require('express');
 const app = express();
 app.get('/', (req, res) => res.send('Bot is online! ✅'));
-app.listen(process.env.PORT || 3000, () => console.log('Web server ready.'));
+app.listen(process.env.PORT || 3000, () => {
+    console.log('Web server ready.');
+    
+    // Keep-alive logic for Render
+    const https = require('https');
+    const keepAliveUrl = process.env.RENDER_EXTERNAL_URL || (process.env.RENDER_SERVICE_NAME ? `https://${process.env.RENDER_SERVICE_NAME}.onrender.com` : null);
+    
+    if (keepAliveUrl) {
+        console.log(`Keep-alive started for: ${keepAliveUrl}`);
+        setInterval(() => {
+            https.get(keepAliveUrl, (res) => {
+                console.log(`Keep-alive ping sent. Status: ${res.statusCode}`);
+            }).on('error', (err) => {
+                console.error('Keep-alive ping failed:', err.message);
+            });
+        }, 10 * 60 * 1000); // Every 10 minutes
+    } else {
+        console.warn('Keep-alive could not start: RENDER_EXTERNAL_URL or RENDER_SERVICE_NAME not found.');
+    }
+});
 
 const client = new Client({
     intents: [
@@ -399,6 +427,10 @@ client.once('ready', async () => {
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
+
+    // Detailed Debug Log
+    console.log(`[DEBUG] Message received: "${message.content}" | User: ${message.author.tag} | Channel: ${message.channel.id} | Guild: ${message.guild.id}`);
+
 
     // Guild & Channel Check from .env
     if (process.env.GUILD_ID && message.guild.id !== process.env.GUILD_ID) {
@@ -3345,6 +3377,8 @@ client.on('messageCreate', async (message) => {
 
 // Interaction Handling
 client.on('interactionCreate', async (interaction) => {
+    console.log(`[DEBUG] Interaction received: ${interaction.commandName || interaction.customId} | User: ${interaction.user.tag} | Type: ${interaction.type}`);
+
     // Guild Check
     if (process.env.GUILD_ID && interaction.guild.id !== process.env.GUILD_ID) {
         console.log(`[DEBUG] Ignored interaction from guild ${interaction.guild.id}`);
@@ -3819,7 +3853,9 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isChatInputCommand()) {
+        await interaction.deferReply({ ephemeral: true });
         const { commandName, options } = interaction;
+
 
         // Admin Role Check
         const adminRoleId = process.env.ADMIN_ROLE_ID;
@@ -3827,13 +3863,13 @@ client.on('interactionCreate', async (interaction) => {
         const hasAdminRole = adminRoleId ? interaction.member.roles.cache.has(adminRoleId) : isUserAdmin;
 
         if (!hasAdminRole) {
-            return interaction.reply({ content: '❌ ليس لديك صلاحية لاستخدام هذه الأوامر الإدارية (تحتاج لرتبة محددة أو صلاحية Administrator).', ephemeral: true });
+            return interaction.editReply({ content: '❌ ليس لديك صلاحية لاستخدام هذه الأوامر الإدارية (تحتاج لرتبة محددة أو صلاحية Administrator).' });
         }
 
         if (commandName === 'set-channel') {
             const channel = options.getChannel('channel');
             await db.set(`active_channel_${interaction.guild.id}`, channel.id);
-            return interaction.reply({ content: `✅ تم تحديد الشات **${channel.name}** كشات مخصص للأوامر بنجاح.`, ephemeral: true });
+            return interaction.editReply({ content: `✅ تم تحديد الشات **${channel.name}** كشات مخصص للأوامر بنجاح.` });
         }
 
         if (commandName === 'add-money') {
@@ -3859,7 +3895,7 @@ client.on('interactionCreate', async (interaction) => {
                 }
             }
 
-            return interaction.reply({ content: `✅ تم إضافة **${formatNumber(amount)}** ريال إلى رصيد **${user.username}**.`, ephemeral: true });
+            return interaction.editReply({ content: `✅ تم إضافة **${formatNumber(amount)}** ريال إلى رصيد **${user.username}**.` });
         }
 
         if (commandName === 'remove-money') {
@@ -3887,7 +3923,7 @@ client.on('interactionCreate', async (interaction) => {
                 }
             }
 
-            return interaction.reply({ content: `✅ تم سحب **${formatNumber(toRemove)}** ريال من رصيد **${user.username}**.`, ephemeral: true });
+            return interaction.editReply({ content: `✅ تم سحب **${formatNumber(toRemove)}** ريال من رصيد **${user.username}**.` });
         }
 
         if (commandName === 'تصفير-الكل') {
@@ -3922,16 +3958,16 @@ client.on('interactionCreate', async (interaction) => {
                 await db.set(`is_vip_${richestId}`, true);
             }
 
-            return interaction.reply({ content: `✅ تم تصفير كافة البيانات بنجاح! \n👑 الشخص الأغنى قبل التصفير كان <@${richestId}> وقد حصل على رتبة **كبار الشخصيات** ومميزات خاصة!`, ephemeral: false });
+            return interaction.editReply({ content: `✅ تم تصفير كافة البيانات بنجاح! \n👑 الشخص الأغنى قبل التصفير كان <@${richestId}> وقد حصل على رتبة **كبار الشخصيات** ومميزات خاصة!` });
         }
 
         if (commandName === 'ازالة-تاج') {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator) && !interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID)) {
-                return interaction.reply({ content: '❌ ليس لديك صلاحية لاستخدام هذا الأمر.', ephemeral: true });
+                return interaction.editReply({ content: '❌ ليس لديك صلاحية لاستخدام هذا الأمر.' });
             }
             const target = interaction.options.getUser('user');
             await db.delete(`is_vip_${target.id}`);
-            return interaction.reply({ content: `✅ تم إزالة التاج من <@${target.id}> بنجاح!` });
+            return interaction.editReply({ content: `✅ تم إزالة التاج من <@${target.id}> بنجاح!` });
         }
     }
 
