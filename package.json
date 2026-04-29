@@ -12,6 +12,7 @@
     "dotenv": "^17.4.2",
     "express": "^4.22.1",
     "gif-encoder-2": "^1.0.5",
+    "mongoose": "^9.6.0",
     "quick.db": "^9.1.7"
   }
 }

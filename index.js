@@ -1,6 +1,6 @@
 const { Client, GatewayIntentBits, EmbedBuilder, Collection, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, AttachmentBuilder, REST, Routes, SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 require('dotenv').config();
-const { QuickDB } = require('quick.db');
+const { QuickDB } = require('./database.js');
 const db = new QuickDB();
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const GIFEncoder = require('gif-encoder-2');
@@ -62,7 +62,7 @@ const properties = [
 let marketPrices = {};
 let lastUpdate = Date.now();
 
-function updateMarket() {
+async function updateMarket() {
     items.forEach(item => {
         const buy = Math.floor(Math.random() * (item.max - item.min + 1)) + item.min;
         const sell = Math.floor(buy * 0.95);
@@ -70,7 +70,9 @@ function updateMarket() {
         marketPrices[item.id] = { buy, sell, rise };
     });
     lastUpdate = Date.now();
-    console.log('Market prices updated!');
+    await db.set('marketPrices', marketPrices);
+    await db.set('marketLastUpdate', lastUpdate);
+    console.log('Market prices updated and saved to DB!');
 }
 
 function formatNumber(num) {
@@ -340,6 +342,16 @@ setInterval(updateMarket, 300000); // 5 minutes
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
+
+    // Load Market Data from DB
+    const savedPrices = await db.get('marketPrices');
+    if (savedPrices) {
+        marketPrices = savedPrices;
+        lastUpdate = (await db.get('marketLastUpdate')) || Date.now();
+        console.log('Market data loaded from DB.');
+    } else {
+        await updateMarket();
+    }
 
     // Startup Reset Logic (Removed to prevent data loss)
     console.log('Startup: Bot is ready without resetting data.');
