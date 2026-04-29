@@ -1838,12 +1838,12 @@ client.on('messageCreate', async (message) => {
             const embed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setTitle('🛡️ نظام الحماية')
-                .setDescription('اختر مدة الحماية التي تريد شراءها:\n\n1️⃣ **ساعة واحدة** - 1,000,000 ريال\n2️⃣ **ساعتين** - 2,000,000 ريال\n3️⃣ **ثلاث ساعات** - 3,000,000 ريال');
+                .setDescription('اختر مدة الحماية التي تريد شراءها:\n\n1️⃣ **ساعة واحدة** - 10,000 ريال\n2️⃣ **ساعتين** - 20,000 ريال\n3️⃣ **ثلاث ساعات** - 30,000 ريال');
 
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('buy_protection_1').setLabel('1 ساعة | 1M').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('buy_protection_2').setLabel('2 ساعة | 2M').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('buy_protection_3').setLabel('3 ساعة | 3M').setStyle(ButtonStyle.Primary)
+                new ButtonBuilder().setCustomId('buy_protection_1').setLabel('1 ساعة').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('buy_protection_2').setLabel('2 ساعة').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('buy_protection_3').setLabel('3 ساعة').setStyle(ButtonStyle.Primary)
             );
 
             return message.reply({ embeds: [embed], components: [row] });
@@ -3933,7 +3933,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (customId.startsWith('buy_protection_')) {
             const type = parseInt(customId.split('_')[2]);
-            const cost = type * 1000000;
+            const cost = type * 10000;
             const userMoney = await db.get(`money_${interaction.user.id}`) || 0;
 
             const currentProtection = await db.get(`protection_until_${interaction.user.id}`);
