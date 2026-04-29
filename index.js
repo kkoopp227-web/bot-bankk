@@ -1711,6 +1711,25 @@ client.on('messageCreate', async (message) => {
         if (!user) return message.reply('❌ منشن الشخص اللي تبي تنهبه!');
         if (user.id === message.author.id) return message.reply('❌ ما تقدر تنهب نفسك!');
 
+        const targetMember = message.guild.members.cache.get(user.id) || await message.guild.members.fetch(user.id).catch(() => null);
+        
+        // 1. Voice Channel Check
+        if (targetMember?.voice.channel) {
+            return message.reply('❌ لا يمكنك نهب شخص موجود في روم صوتي!');
+        }
+
+        // 2. VIP Check (Role or DB Status)
+        const isVipStatus = await db.get(`is_vip_${user.id}`);
+        const hasVipRole = targetMember?.roles.cache.some(role => 
+            role.name.toLowerCase().includes('vip') || 
+            role.name === 'كبار الشخصيات' ||
+            role.id === process.env.VIP_ROLE_ID
+        );
+
+        if (isVipStatus || hasVipRole) {
+            return message.reply('❌ لا يمكنك نهب كبار الشخصيات (VIP)!');
+        }
+
         const targetProtection = await db.get(`protection_until_${user.id}`);
         if (targetProtection && targetProtection > Date.now()) {
             const remaining = targetProtection - Date.now();
@@ -1819,12 +1838,12 @@ client.on('messageCreate', async (message) => {
             const embed = new EmbedBuilder()
                 .setColor('#3498db')
                 .setTitle('🛡️ نظام الحماية')
-                .setDescription('اختر مدة الحماية التي تريد شراءها:\n\n1️⃣ **ساعة واحدة** - 10,000 ريال\n2️⃣ **ساعتين** - 20,000 ريال\n3️⃣ **ثلاث ساعات** - 30,000 ريال');
+                .setDescription('اختر مدة الحماية التي تريد شراءها:\n\n1️⃣ **ساعة واحدة** - 1,000,000 ريال\n2️⃣ **ساعتين** - 2,000,000 ريال\n3️⃣ **ثلاث ساعات** - 3,000,000 ريال');
 
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('buy_protection_1').setLabel('1 ساعة').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('buy_protection_2').setLabel('2 ساعة').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('buy_protection_3').setLabel('3 ساعة').setStyle(ButtonStyle.Primary)
+                new ButtonBuilder().setCustomId('buy_protection_1').setLabel('1 ساعة | 1M').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('buy_protection_2').setLabel('2 ساعة | 2M').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('buy_protection_3').setLabel('3 ساعة | 3M').setStyle(ButtonStyle.Primary)
             );
 
             return message.reply({ embeds: [embed], components: [row] });
@@ -2094,19 +2113,26 @@ client.on('messageCreate', async (message) => {
         await db.set(`luck_cooldown_${message.author.id}`, Date.now());
         
         const rewards = [
-            { type: 'money', value: 10000, label: '10K', emoji: '💵' },
-            { type: 'money', value: 20000, label: '20K', emoji: '💵' },
-            { type: 'money', value: 40000, label: '40K', emoji: '💵' },
-            { type: 'money', value: 60000, label: '60K', emoji: '💵' },
-            { type: 'item', id: 'gold', value: 100, label: 'ذهب', emoji: '📀' },
-            { type: 'item', id: 'steel', value: 50, label: 'فولاذ', emoji: '🔩' },
-            { type: 'item', id: 'wood', value: 10, label: 'خشب', emoji: '🪵' },
-            { type: 'item', id: 'iron', value: 40, label: 'حديد', emoji: '⚙️' },
-            { type: 'item', id: 'brick', value: 70, label: 'طوب', emoji: '🧱' },
-            { type: 'item', id: 'stone', value: 120, label: 'حجر', emoji: '🪨' }
+            { type: 'item', id: 'gold', value: 100, label: 'ذهب', emoji: '📀', weight: 4 },
+            { type: 'item', id: 'steel', value: 50, label: 'فولاذ', emoji: '🔩', weight: 6 },
+            { type: 'item', id: 'stone', value: 120, label: 'حجر', emoji: '🪨', weight: 10 },
+            { type: 'item', id: 'iron', value: 40, label: 'حديد', emoji: '⚙️', weight: 16 },
+            { type: 'item', id: 'brick', value: 70, label: 'طوب', emoji: '🧱', weight: 23 },
+            { type: 'item', id: 'wood', value: 10, label: 'خشب', emoji: '🪵', weight: 35 },
+            { type: 'money', value: 50000, label: '50K', emoji: '💵', weight: 6 }
         ];
 
-        const winner = rewards[Math.floor(Math.random() * rewards.length)];
+        const totalWeight = rewards.reduce((sum, r) => sum + r.weight, 0);
+        let random = Math.random() * totalWeight;
+        let winner;
+        
+        for (const reward of rewards) {
+            if (random < reward.weight) {
+                winner = reward;
+                break;
+            }
+            random -= reward.weight;
+        }
 
         const width = 600;
         const height = 350;
@@ -3606,7 +3632,7 @@ client.on('interactionCreate', async (interaction) => {
             const lastCollect = await db.get(`last_collect_${interaction.user.id}`);
             const timer = lastCollect || Date.now();
             const diffMs = Date.now() - timer;
-            const cycleMs = 240000; // 4 minutes
+            const cycleMs = 180000; // 3 minutes
             const diffCycles = Math.floor(diffMs / cycleMs);
             
             if (diffCycles < 1) {
@@ -3907,7 +3933,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (customId.startsWith('buy_protection_')) {
             const type = parseInt(customId.split('_')[2]);
-            const cost = type * 10000;
+            const cost = type * 1000000;
             const userMoney = await db.get(`money_${interaction.user.id}`) || 0;
 
             const currentProtection = await db.get(`protection_until_${interaction.user.id}`);
