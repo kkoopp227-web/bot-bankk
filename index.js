@@ -2113,13 +2113,19 @@ client.on('messageCreate', async (message) => {
         await db.set(`luck_cooldown_${message.author.id}`, Date.now());
         
         const rewards = [
-            { type: 'money', label: 'فلوس', emoji: '💵', weight: 80 },
-            { type: 'item', id: 'wood', value: 10, label: 'خشب', emoji: '🪵', weight: 7 },
-            { type: 'item', id: 'brick', value: 70, label: 'طوب', emoji: '🧱', weight: 4.6 },
-            { type: 'item', id: 'iron', value: 40, label: 'حديد', emoji: '⚙️', weight: 3.2 },
-            { type: 'item', id: 'stone', value: 120, label: 'حجر', emoji: '🪨', weight: 2 },
-            { type: 'item', id: 'steel', value: 50, label: 'فولاذ', emoji: '🔩', weight: 1.2 },
-            { type: 'item', id: 'gold', value: 100, label: 'ذهب', emoji: '📀', weight: 0.8 }
+            // Money (Primary - 80% Total)
+            { type: 'money', value: 10000, label: '10K', emoji: '💵', weight: 30 },
+            { type: 'money', value: 50000, label: '50K', emoji: '💵', weight: 25 },
+            { type: 'money', value: 100000, label: '100K', emoji: '💵', weight: 15 },
+            { type: 'money', value: 200000, label: '200K', emoji: '💵', weight: 7 },
+            { type: 'money', value: 400000, label: '400K', emoji: '💵', weight: 3 },
+            // Items (Rare - 20% Total)
+            { type: 'item', id: 'wood', value: 10, label: 'خشب', emoji: '🪵', weight: 7.4 },
+            { type: 'item', id: 'brick', value: 70, label: 'طوب', emoji: '🧱', weight: 4.9 },
+            { type: 'item', id: 'iron', value: 40, label: 'حديد', emoji: '⚙️', weight: 3.4 },
+            { type: 'item', id: 'stone', value: 120, label: 'حجر', emoji: '🪨', weight: 2.1 },
+            { type: 'item', id: 'steel', value: 50, label: 'فولاذ', emoji: '🔩', weight: 1.3 },
+            { type: 'item', id: 'gold', value: 100, label: 'ذهب', emoji: '📀', weight: 0.9 }
         ];
 
         const totalWeight = rewards.reduce((sum, r) => sum + r.weight, 0);
@@ -2132,11 +2138,6 @@ client.on('messageCreate', async (message) => {
                 break;
             }
             random -= reward.weight;
-        }
-
-        // Randomize money value if it's the winner
-        if (winner.type === 'money') {
-            winner.value = Math.floor(Math.random() * (100000 - 5000 + 1)) + 5000; // 5K to 100K
         }
 
         const width = 600;
