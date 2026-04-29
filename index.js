@@ -2113,13 +2113,13 @@ client.on('messageCreate', async (message) => {
         await db.set(`luck_cooldown_${message.author.id}`, Date.now());
         
         const rewards = [
-            { type: 'item', id: 'gold', value: 100, label: 'ذهب', emoji: '📀', weight: 4 },
-            { type: 'item', id: 'steel', value: 50, label: 'فولاذ', emoji: '🔩', weight: 6 },
-            { type: 'item', id: 'stone', value: 120, label: 'حجر', emoji: '🪨', weight: 10 },
-            { type: 'item', id: 'iron', value: 40, label: 'حديد', emoji: '⚙️', weight: 16 },
-            { type: 'item', id: 'brick', value: 70, label: 'طوب', emoji: '🧱', weight: 23 },
-            { type: 'item', id: 'wood', value: 10, label: 'خشب', emoji: '🪵', weight: 35 },
-            { type: 'money', value: 50000, label: '50K', emoji: '💵', weight: 6 }
+            { type: 'money', label: 'فلوس', emoji: '💵', weight: 80 },
+            { type: 'item', id: 'wood', value: 10, label: 'خشب', emoji: '🪵', weight: 7 },
+            { type: 'item', id: 'brick', value: 70, label: 'طوب', emoji: '🧱', weight: 4.6 },
+            { type: 'item', id: 'iron', value: 40, label: 'حديد', emoji: '⚙️', weight: 3.2 },
+            { type: 'item', id: 'stone', value: 120, label: 'حجر', emoji: '🪨', weight: 2 },
+            { type: 'item', id: 'steel', value: 50, label: 'فولاذ', emoji: '🔩', weight: 1.2 },
+            { type: 'item', id: 'gold', value: 100, label: 'ذهب', emoji: '📀', weight: 0.8 }
         ];
 
         const totalWeight = rewards.reduce((sum, r) => sum + r.weight, 0);
@@ -2128,10 +2128,15 @@ client.on('messageCreate', async (message) => {
         
         for (const reward of rewards) {
             if (random < reward.weight) {
-                winner = reward;
+                winner = { ...reward };
                 break;
             }
             random -= reward.weight;
+        }
+
+        // Randomize money value if it's the winner
+        if (winner.type === 'money') {
+            winner.value = Math.floor(Math.random() * (100000 - 5000 + 1)) + 5000; // 5K to 100K
         }
 
         const width = 600;
